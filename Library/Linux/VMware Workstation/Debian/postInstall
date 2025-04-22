@@ -1,0 +1,274 @@
+#!/bin/bash
+# postInstall
+# install extra pkgs for tty 
+#-------------------------
+
+#1 Check current apps and update and upgrade them with the altest version
+#2 Install needed applications to machiene
+#3 Updated usermod to sudo for tux
+#4 Switch user to tux to continue setup
+#5 add files needed for tux
+#6  
+
+
+#BLOCK: Machiene App maintence & make Tux a super user
+#-------------------------
+
+sudo apt-get update && sudo apt-get upgrade -y #Check current apps and update/upgrade them with latest versions
+
+aptDepends=(
+sudo
+bc #binary calculator
+build-essential #compilers
+nmap
+sqlite3
+sudo
+tree
+lvm2
+)
+sudo apt-get install -y "${aptDepends[@]}" 
+
+usermod -aG sudo tux #make tux a sudo user
+
+#BLOCK: Create inClass and bin directory for tux. 
+#BLOCK: Create .bashrc_aliases, .funcs, newUser, append .bashrc  to include $PATH changes for tux.
+#------------------------
+
+cd /home/tux/ #Insure we are in the correct directory /home/tux
+
+mkdir inClass #Create inClass directory /home/tux
+mkdir bin #Create bin directory /home/tux
+
+#Create .bash_aliases
+cat - > ~/.bash_aliases << "EOF"
+#.bash_aliases 
+alias h=' history'
+alias l=' ls -sailF --color=auto'
+alias la=' ls -A --color=auto'
+alias lc=' ls -CF --color=auto'
+alias ll=' ls -alF --color=auto'
+alias lr=' ls -artlF --color=auto'
+alias lr1=' ls -1rtlF --color=auto'
+EOF
+
+#Create .funcs
+cat - > ~/.funcs << "EOF"
+whdr() {
+echo '<!DOCTYPE html><head><title>bash web</title></head><body><pre>'
+
+}
+wftr() {
+echo '</pre></body></html>'
+
+}
+calcit() {
+    # pi "355/113"
+    printf "%s\n" "$@" | bc -lq ~/.bcrc  
+}
+EOF
+
+#Create .bcrc
+cat - > ~/.bcrc << "EOF"
+scale=20
+EOF
+
+#Append .bashrc
+cat - >> ~/.bashrc << "EOF"
+# append to .bashrc
+# source .funcs
+if [ -f ~/.funcs ]; then
+    . ~/.funcs
+fi
+
+export PATH="$HOME/bin:$HOME/inclass:$PATH"
+EOF
+
+
+#BLOCK: Create inClass and bin directory for etc/skel/.
+#BLOCK: Create .bashrc_aliases, .funcs, newUser,forDemo, hi.txt, append .bashrc  to include $PATH changes for etc/skel.
+#-------------------------
+
+cd /etc/skel/
+mkdir inClass
+mkdir bin
+
+#Create .bash_aliases
+cat - > ~/.bash_aliases << "EOF"
+#.bash_aliases 
+alias h=' history'
+alias l=' ls -sailF --color=auto'
+alias la=' ls -A --color=auto'
+alias lc=' ls -CF --color=auto'
+alias ll=' ls -alF --color=auto'
+alias lr=' ls -artlF --color=auto'
+alias lr1=' ls -1rtlF --color=auto'
+EOF
+
+#Create .funcs
+cat - > ~/.funcs << "EOF"
+whdr() {
+echo '<!DOCTYPE html><head><title>bash web</title></head><body><pre>'
+
+}
+wftr() {
+echo '</pre></body></html>'
+
+}
+calcit() {
+    # pi "355/113"
+    printf "%s\n" "$@" | bc -lq ~/.bcrc  
+}
+
+EOF
+
+#Create .bcrc
+cat - > ~/.bcrc << "EOF"
+scale=20
+EOF
+
+#Append .bashrc
+cat - >> ~/.bashrc << "EOF"
+# append to .bashrc
+# source .funcs
+if [ -f ~/.funcs ]; then
+    . ~/.funcs
+fi
+
+export PATH="$HOME/bin:$HOME/inclass:$PATH"
+EOF
+
+cd /etc/skel/inClass
+cat - > hi.txt << "EOF"
+Welcome to my virtual machine.
+EOF
+
+cd /etc/skel/bin
+cat - > forDemo << "EOF"
+NUMS=$(seq -w 1 10)
+
+for x in $NUMS
+do
+echo "$x" 
+done
+EOF
+
+
+EOF
+
+#-------------------------
+
+# web_ins
+# install apache2
+sudo tasksel install web-server 
+# change default webpage
+cd /var/www/html/
+sudo mv index.html apache_default.org 
+sudo wget https://phillipsd.com/basic.html 
+sudo mv basic.html index.html
+
+
+
+
+
+# boot to multiuser - no gui
+sudo systemctl set-default multi-user.target 
+# boot to a gui - if installed 
+#sudo systemctl set-default graphical.target 
+# this will start gui for a single user 
+#systemctl isolate graphical.target
+
+#Create for loop for user creation and deletion
+cd ~/
+#cat - > userAdd << "EOF"
+
+pass=$(sudo cat /etc/shadow | grep tux | awk -F':' '{print $2}')
+
+NUMS=$(seq -w 1 10)
+
+for x in $NUMS
+do
+echo "user$x created" 
+useradd -m -c "user$x" -s /bin/bash -p "$pass" "user$x"
+done
+#EOF
+
+cat -> userDel << "EOF"
+#!/bin/bash
+
+NUMS=$(seq -w 1 10)
+for x in $NUMS
+do
+ echo "Deleting:user$x"
+ userdel -rf "user$x"
+done
+EOF
+
+
+
+#BLOCK:Create a volume group and 3 mounted logical volumes and add UUID into fstab
+#--------
+lsblk
+echo "Please enter the name of the first hard drive to be partitioned and mounted"
+read disk1
+echo "Please enter the name of the second hard drive to be partitioned and mounted"
+read disk2
+#Partion both disks
+fdisk /dev/$disk1 << "EOF"
+n
+p
+
+
+
+t
+8e
+w
+
+EOF
+fdisk /dev/$disk2 << "EOF"
+n
+p
+
+
+
+t
+8e
+w
+
+EOF
+lsblk
+echo "Please enter the name of the first new partition"
+read part1
+echo "Please enter the name of the second new partition"
+read part2
+
+pvcreate /dev/$part1 /dev/$part2 #Create a physical volume for each partition of the two drives
+pvs #Display the physical volumes
+
+vgcreate datavg /dev/$part1 /dev/$part2 #Create a volume group called datavg
+vgs #Display the volume groups
+
+lvcreate --name data1lv --size 2G datavg #Create the first logical volume inside the volume group datavg
+lvcreate --name data2lv --size 2G datavg #Create the second logical volume inside the volume group datavg
+lvcreate --name data3lv --size 2G datavg #Create the third logical volume inside the volume group datavg
+lvs #Display the logical volumes
+
+mkfs.ext4 /dev/datavg/data1lv #Create ext4 filesystem on logical volume 1
+mkfs.ext4 /dev/datavg/data2lv #Create ext4 filesystem on logical volume 2
+mkfs.ext4 /dev/datavg/data3lv #Create ext4 filesystem on logical volume 3
+
+mkdir /mnt/data1 /mnt/data2 /mnt/data3
+mount /dev/datavg/data1lv /mnt/data1 #Mount the logical volume
+mount /dev/datavg/data2lv /mnt/data2 #Mount the logical volume
+mount /dev/datavg/data3lv /mnt/data3 #Mount the logical volume
+lsblk
+
+
+blkid /dev/datavg/data1lv | awk -F'"' '{print $2}' > UUID.txt
+blkid /dev/datavg/data2lv | awk -F'"' '{print $2}' >> UUID.txt
+blkid /dev/datavg/data3lv | awk -F'"' '{print $2}' >> UUID.txt
+
+awk '{print "UUID=" $0}' UUID.txt > UUID.tmp
+mv UUID.tmp UUID.txt
+awk '{print $0 " /mnt/data"NR" ext4 defaults 0 2"}' UUID.txt > UUID.tmp
+mv UUID.tmp UUID.txt
+cat UUID.txt >> /etc/fstab
