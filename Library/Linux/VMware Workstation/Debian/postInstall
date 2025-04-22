@@ -14,7 +14,7 @@
 #BLOCK: Machiene App maintence & make Tux a super user
 #-------------------------
 
-apt-get update && sudo apt-get upgrade -y #Check current apps and update/upgrade them with latest versions
+apt-get update && apt-get upgrade -y #Check current apps and update/upgrade them with latest versions
 
 aptDepends=(
 sudo
