@@ -272,6 +272,3 @@ mv UUID.tmp UUID.txt
 awk '{print $0 " /mnt/data"NR" ext4 defaults 0 2"}' UUID.txt > UUID.tmp
 mv UUID.tmp UUID.txt
 cat UUID.txt >> /etc/fstab
-
-
-#test
