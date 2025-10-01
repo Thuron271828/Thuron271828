@@ -18,7 +18,6 @@ apt-get update && apt-get upgrade -y #Check current apps and update/upgrade them
 
 aptDepends=(
 sudo
-vim
 bc #binary calculator
 build-essential #compilers
 nmap
